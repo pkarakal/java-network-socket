@@ -27,6 +27,8 @@ package org.pkarakal.networking;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.Arrays;
+import java.util.logging.Logger;
 
 public class MessageDispatcher {
     InetAddress serverIP;
@@ -39,18 +41,18 @@ public class MessageDispatcher {
     boolean waitingForResult = false;
     byte[] txBuffer;
     byte[] rxBuffer;
+    Logger logger;
     
-    public MessageDispatcher(String code, String message,
-                             DatagramSocket[] sockets,
-                             InetAddress serverIP,
-                             int serverPort,
-                             int clientPort) throws SocketException {
+    public MessageDispatcher(String code, String message, DatagramSocket[] sockets,
+                             InetAddress serverIP, int serverPort,
+                             int clientPort, Logger logger) throws SocketException {
         this.code = code;
         this.message = message;
         this.datagramSockets = sockets;
         this.serverIP = serverIP;
         this.serverPort= serverPort;
         this.clientPort = clientPort;
+        this.logger = logger;
         this.rxBuffer = new byte[2048];
         this.txBuffer = this.code.getBytes();
         try {
@@ -111,10 +113,10 @@ public class MessageDispatcher {
                 this.waitingForResult = true;
                 this.datagramSockets[1].setSoTimeout(9000000);
                 this.datagramSockets[1].receive(this.datagramPackets[1]);
-                System.out.println(new String(rxBuffer, 0, this.datagramPackets[1].getLength()));
+                logger.info(new String(rxBuffer, 0, this.datagramPackets[1].getLength()));
                 this.waitingForResult = false;
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.severe(Arrays.toString(e.getStackTrace()));
             }
         }
         int i =0;

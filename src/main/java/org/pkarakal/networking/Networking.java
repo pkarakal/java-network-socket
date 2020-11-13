@@ -28,6 +28,7 @@ package org.pkarakal.networking;
 import java.io.IOException;
 import java.net.*;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -70,14 +71,16 @@ class Networking {
                 }
                 code = code.concat("\r");
                 DatagramSocket[] datagramSocket = new DatagramSocket[2];
-                MessageDispatcher messageDispatcher = new MessageDispatcher(code, "", datagramSocket, ip, port, receivePort);
+                MessageDispatcher messageDispatcher = new MessageDispatcher(code, "", datagramSocket, ip, port, receivePort, logger);
                 messageDispatcher.sendRequest();
             } catch (UnknownHostException | SocketException e) {
+                logger.severe(e.toString());
                 System.out.println(e.toString());
-                e.printStackTrace();
+                logger.severe(Arrays.toString(e.getStackTrace()));
                 System.exit(-1);
             }
         } else {
+            logger.severe("Wrong number of application parameters. Exiting...");
             throw new Exception("Wrong number of application parameters");
         }
     }
