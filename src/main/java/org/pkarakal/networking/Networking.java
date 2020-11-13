@@ -25,8 +25,12 @@
 
 package org.pkarakal.networking;
 
+import java.io.IOException;
 import java.net.*;
-import java.util.Arrays;
+import java.nio.file.Path;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 /**
  * *Networking*
@@ -41,6 +45,19 @@ import java.util.Arrays;
 
 class Networking {
     public static void main(String[] args) throws Exception {
+        Logger logger = Logger.getLogger("Networking");
+        FileHandler fh;
+        try {
+            // This block configure the logger with handler and formatter
+            fh = new FileHandler("./Networking.log", true);
+            logger.addHandler(fh);
+            SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+            logger.setUseParentHandlers(false);
+        } catch (SecurityException | IOException e) {
+            e.printStackTrace();
+        }
+        logger.info("Application started");
         if (args != null && args.length == 4) {
             byte[] byteIP = {(byte) 155, (byte) 207, 18, (byte) 208};
             try {
