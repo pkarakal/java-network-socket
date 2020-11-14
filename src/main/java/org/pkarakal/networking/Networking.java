@@ -95,7 +95,7 @@ class Networking {
                 }
                 code = code.concat("\r");
                 DatagramSocket[] datagramSocket = new DatagramSocket[2];
-                MessageDispatcher messageDispatcher = new MessageDispatcher(code, "", datagramSocket, ip, port, receivePort, logger);
+                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, args[3].equals("image"));
                 messageDispatcher.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
