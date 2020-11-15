@@ -37,6 +37,9 @@ import java.util.logging.Logger;
 public class ImageVideoReceiver extends MessageDispatcher {
     HashMap<Boolean, String> fileName;
     boolean isImage;
+    Thread send;
+    Thread receive;
+    
     public ImageVideoReceiver(String code, String message, DatagramSocket[] sockets,
                               InetAddress serverIP, int serverPort, int clientPort,
                               Logger logger, boolean isImage) throws SocketException {
@@ -53,40 +56,112 @@ public class ImageVideoReceiver extends MessageDispatcher {
      * to map the correct file name based on the isImage
      * property. If true set it to image.jpg else video.mjpeg
      */
-    private void _createImageHashMap(){
+    private void _createImageHashMap() {
         this.fileName = new HashMap<>(2);
         this.fileName.put(true, "image.jpg");
         this.fileName.put(false, "video.mjpeg");
     }
     
     @Override
-    public void sendRequest() throws SocketException {
+    public void sendRequest() {
         try {
-            File file = new File(this.fileName.get(this.isImage));
-            OutputStream stream = new FileOutputStream(file);
             // If the necessary code is video send 30 requests to the server
-            int limit= this.isImage ? 1 : 30;
-            logger.info("Limit is ".concat(String.valueOf(limit)));
+            int limit = this.isImage ? 1 : 100;
             this.datagramSockets[1].setSoTimeout(90000);
-            // This loop runs once if it is an image code
-            for(int i=0; i < limit; ++i) {
-                this.datagramSockets[0].send(this.datagramPackets[0]);
-                int length = 0;
-                while (true) {
-                    this.datagramSockets[1].receive(this.datagramPackets[1]);
-                    if (length == 0)
-                        length = this.datagramPackets[1].getLength();
-                    if (length != this.datagramPackets[1].getLength())
-                        break;
-                    stream.write(this.datagramPackets[1].getData(), this.datagramPackets[1].getOffset(), this.datagramPackets[1].getLength());
-                }
-            }
-            stream.close();
-        } catch (IOException e) {
+            this.request(limit, this.datagramSockets, datagramPackets, logger, this.fileName.get(this.isImage));
+            logger.info("Exited");
+        } catch (IOException | InterruptedException e) {
             logger.severe(Arrays.toString(e.getStackTrace()));
         }
-        for(DatagramSocket socket: this.datagramSockets) {
+        for (DatagramSocket socket : this.datagramSockets) {
             socket.close();
         }
     }
+    
+    private void request(int length, DatagramSocket[] socket, DatagramPacket[] packet, Logger logger, String name) throws InterruptedException {
+        this.send = new SendThread(length, socket[0], packet[0], logger);
+        this.receive = new ReceiveThread(length, socket[1], packet[1], logger, name);
+        this.send.start();
+        this.receive.start();
+        this.send.join();
+        this.receive.join();
+        this.send.stop();
+        this.receive.stop();
+    }
 }
+
+class SendThread extends Thread {
+    int length;
+    DatagramSocket socket;
+    DatagramPacket packet;
+    Logger logger;
+    
+    SendThread(int length, DatagramSocket socket, DatagramPacket packet, Logger logger) {
+        this.socket = socket;
+        this.packet = packet;
+        this.length = length;
+        this.logger = logger;
+    }
+    
+    public void run() {
+        for (int i = 0; i < this.length; ++i) {
+            try {
+                this.socket.send(this.packet);
+                // This is equal to 30fps
+                Thread.sleep(33, 33);
+            } catch (IOException | InterruptedException e) {
+                logger.severe(Arrays.toString(e.getStackTrace()));
+                logger.severe(e.getMessage());
+                return;
+            }
+        }
+        logger.info("Exited send thread");
+    }
+}
+
+class ReceiveThread extends Thread {
+    int length;
+    DatagramSocket socket;
+    DatagramPacket packet;
+    Logger logger;
+    String fileName;
+    
+    ReceiveThread(int length, DatagramSocket socket, DatagramPacket packet,
+                  Logger logger, String fileName) {
+        this.socket = socket;
+        this.packet = packet;
+        this.length = length;
+        this.logger = logger;
+        this.fileName = fileName;
+    }
+    
+    public void run() {
+        try {
+            File file = new File(this.fileName);
+            FileOutputStream stream = new FileOutputStream(file);
+            for (int i = 0; i < this.length; ++i) {
+                try {
+                    int len = 0;
+                    while (true) {
+                        this.socket.receive(this.packet);
+                        if (len == 0)
+                            len = this.packet.getLength();
+                        if (len != this.packet.getLength())
+                            break;
+                        stream.write(this.packet.getData(), this.packet.getOffset(), this.packet.getLength());
+                    }
+                } catch (IOException e) {
+                    logger.severe(Arrays.toString(e.getStackTrace()));
+                    logger.severe(e.getMessage());
+                    return;
+                }
+            }
+            stream.close();
+            logger.info("Exited receiving thread");
+        } catch (IOException e) {
+            logger.severe(Arrays.toString(e.getStackTrace()));
+            logger.severe(e.getMessage());
+        }
+    }
+}
+
