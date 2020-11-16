@@ -39,16 +39,18 @@ import java.util.logging.SimpleFormatter;
  * *Networking*
  * The networking application takes arguments from the CLI, parses them
  * and executes the application defined in applicationType
+ * serverIP {int[]}: The IP to request data from
  * serverPort {int}: The port the server is listening for requests
  * clientPort {int}: The port the server is sending requests to the client
  * code {str}: The code to send to the server
- * applicationType {str}: The type of application to run: The accepted applications
+ * job {str}: The type of application to run: The accepted applications
  * are: audio, echo, image, ithaki, obd, thermo
  */
 
 class Networking {
     private final static Options options = new Options();
     static {
+        options.addRequiredOption("i", "serverIP", true, "Define the IP of the server.");
         options.addRequiredOption( "s", "serverPort", true, "Define the port the server is listening at.");
         options.addRequiredOption("c", "clientPort",  true, "Define the port the server replies to");
         options.addRequiredOption("r","request-code", true, "Define the request code");
@@ -72,14 +74,23 @@ class Networking {
             e.printStackTrace();
         }
         logger.info("Application started");
-        if (args != null && args.length == 4) {
-            byte[] byteIP = {(byte) 155, (byte) 207, 18, (byte) 208};
+        if (args.length > 1) {
+            final CommandLineParser parser = new DefaultParser();
             try {
+                final CommandLine cmd = parser.parse(options, args);
+                String[] ipStr = (cmd.getOptionValue("i")).split("\\.");
+                byte[] byteIP = new byte[4];
+                int i = 0;
+                for (String part : ipStr) {
+                    byteIP[i] = (byte) Integer.parseInt(part);
+                    ++i;
+                }
+                int port = Integer.parseInt(cmd.getOptionValue("s"));
+                int receivePort = Integer.parseInt(cmd.getOptionValue("c"));
+                String code = cmd.getOptionValue("r");
+                String job = cmd.getOptionValue("j");
                 InetAddress ip = InetAddress.getByAddress(byteIP);
-                int port = Integer.parseInt(args[0]);
-                int receivePort = Integer.parseInt(args[1]);
-                String code = args[2];
-                if(args[3].equals("thermo")){
+                if (job.equals("thermo")) {
                     code = code.concat("T00");
                 }
                 code = code.concat("\r");
