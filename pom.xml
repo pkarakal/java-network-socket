@@ -65,7 +65,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
-                            <mainClass>org.pkarakal.networking.NetworkingW</mainClass>
+                            <mainClass>org.pkarakal.networking.Networking</mainClass>
                         </configuration>
                     </execution>
                 </executions>
