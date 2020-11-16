@@ -25,6 +25,8 @@
 
 package org.pkarakal.networking;
 
+import org.apache.commons.cli.*;
+
 import java.io.IOException;
 import java.net.*;
 import java.nio.file.Path;
@@ -45,6 +47,17 @@ import java.util.logging.SimpleFormatter;
  */
 
 class Networking {
+    private final static Options options = new Options();
+    static {
+        options.addRequiredOption( "s", "serverPort", true, "Define the port the server is listening at.");
+        options.addRequiredOption("c", "clientPort",  true, "Define the port the server replies to");
+        options.addRequiredOption("r","request-code", true, "Define the request code");
+        options.addRequiredOption("j","job", true, "Define the job to execute. The valid parameters are echo, thermo, image, video, audio, tcp, ithaki, obd");
+        options.addOption("m", "CAM", true, "Define one of two cameras: FIX or PTZ");
+        options.addOption("d", "DIR", true, "Define the direction of the camera. Accepted values are U,D,L,R,C,M");
+        options.addOption("f", "FLOW", true, "Define if flow is on or off");
+        options.addOption("l", "UDP", true, "Define the length of the UDP packets. Accepted values are 128,256,512,1024. Default=1024");
+    }
     public static void main(String[] args) throws Exception {
         Logger logger = Logger.getLogger("Networking");
         FileHandler fh;
