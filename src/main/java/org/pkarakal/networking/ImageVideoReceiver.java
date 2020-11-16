@@ -86,7 +86,7 @@ public class ImageVideoReceiver extends MessageDispatcher {
     
     private void request(int length, DatagramSocket[] socket, DatagramPacket[] packet, Logger logger, String name, boolean flow,
                          BlockingQueue<Boolean> gotReply, BlockingQueue<Boolean> sentNext) throws InterruptedException {
-        this.send = new SendThread(length, socket[0], packet[0], logger, flow, gotReply, sentNext, this.txBuffer);
+        this.send = new SendThread(length, socket[0], packet[0], logger, flow, gotReply, sentNext, this.txBuffer, this.txBuffer);
         this.receive = new ReceiveThread(length, socket[1], packet[1], logger, name, flow, gotReply, sentNext);
         this.send.start();
         this.receive.start();
@@ -106,9 +106,10 @@ class SendThread extends Thread {
     BlockingQueue<Boolean> gotReply;
     BlockingQueue<Boolean> sentNext;
     byte[] txBuffer;
+    byte[] defaultTxBuffer;
     
     SendThread(int length, DatagramSocket socket, DatagramPacket packet, Logger logger, boolean flow,
-               BlockingQueue<Boolean> gotReply, BlockingQueue<Boolean> sentNext, byte[] txBuffer) {
+               BlockingQueue<Boolean> gotReply, BlockingQueue<Boolean> sentNext, byte[] txBuffer, byte[] defaultTxBuffer) {
         this.socket = socket;
         this.packet = packet;
         this.length = length;
@@ -117,10 +118,16 @@ class SendThread extends Thread {
         this.gotReply = gotReply;
         this.sentNext = sentNext;
         this.txBuffer = txBuffer;
+        this.defaultTxBuffer = new byte[this.txBuffer.length];
+        this.defaultTxBuffer = Arrays.copyOf(this.txBuffer, this.txBuffer.length);
     }
     
     public void run() {
         for (int i = 0; i < this.length; ++i) {
+            if(i>0){
+                this.txBuffer = Arrays.copyOf(this.defaultTxBuffer, this.defaultTxBuffer.length);
+                this.packet = new DatagramPacket(this.txBuffer, this.txBuffer.length, this.packet.getAddress(), this.packet.getPort());
+            }
             while (true) {
                 try {
                     this.socket.send(this.packet);
@@ -173,11 +180,7 @@ class ReceiveThread extends Thread {
         try {
             File file = new File(this.fileName);
             FileOutputStream stream = new FileOutputStream(file);
-            // TODO: implement a common function that is not depending on the value of flow
-            if (!this.flow)
-                flowOffRequest(stream);
-            else
-                flowOnRequest(stream);
+            this.getRequest(stream);
             stream.close();
             logger.info("Exited receiving thread");
         } catch (IOException e) {
@@ -186,54 +189,42 @@ class ReceiveThread extends Thread {
         }
     }
     
-    private void flowOnRequest(FileOutputStream stream) {
-        int len = 0;
-        boolean first = true;
-        boolean input = true;
-        while (true) {
-            try {
-                if (!first)
-                    input = this.sentNext.take();
-                if (!input)
-                    break;
-                this.socket.receive(this.packet);
-                if (len == 0)
-                    len = this.packet.getLength();
-                if (len != this.packet.getLength()) {
-                    this.gotReply.add(false);
-                    break;
-                }
-                stream.write(this.packet.getData(), this.packet.getOffset(), this.packet.getLength());
-                this.gotReply.add(true);
-                if (first)
-                    first = false;
-            } catch (IOException | InterruptedException e) {
-                this.logger.severe(Arrays.toString(e.getStackTrace()));
-                this.logger.severe(e.getMessage());
-                return;
-            }
-        }
-    }
-    
-    private void flowOffRequest(FileOutputStream stream) {
+    private void getRequest(FileOutputStream stream) {
         for (int i = 0; i < this.length; ++i) {
-            try {
-                int len = 0;
-                while (true) {
+            int len = 0;
+            boolean first = false;
+            boolean input = false;
+            if (this.flow){
+                first= true;
+                input = true;
+            }
+            while (true) {
+                try {
+                    if (this.flow && !first)
+                        input = this.sentNext.take();
+                    if (this.flow && !input)
+                        break;
                     this.socket.receive(this.packet);
                     if (len == 0)
                         len = this.packet.getLength();
-                    if (len != this.packet.getLength())
+                    if (len != this.packet.getLength()) {
+                        if(this.flow)
+                            this.gotReply.add(false);
                         break;
+                    }
                     stream.write(this.packet.getData(), this.packet.getOffset(), this.packet.getLength());
+                    if(this.flow){
+                        this.gotReply.add(true);
+                        if (this.flow && first)
+                            first = false;
+                    }
+                } catch (IOException | InterruptedException e) {
+                    this.logger.severe(Arrays.toString(e.getStackTrace()));
+                    this.logger.severe(e.getMessage());
+                    return;
                 }
-            } catch (IOException e) {
-                this.logger.severe(Arrays.toString(e.getStackTrace()));
-                this.logger.severe(e.getMessage());
-                return;
             }
         }
-        
     }
 }
 
