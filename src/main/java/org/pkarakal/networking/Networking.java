@@ -90,12 +90,24 @@ class Networking {
                 String code = cmd.getOptionValue("r");
                 String job = cmd.getOptionValue("j");
                 InetAddress ip = InetAddress.getByAddress(byteIP);
+                boolean flow = false;
                 if (job.equals("thermo")) {
                     code = code.concat("T00");
                 }
+                if (cmd.hasOption("m")) {
+                    code = code.concat(" CAM=").concat(cmd.getOptionValue("m"));
+                }
+                if (cmd.hasOption("m") && cmd.getOptionValue("m").equals("PTZ")
+                            && cmd.hasOption("d")){
+                    code = code.concat(" DIR=").concat(cmd.getOptionValue("d"));
+                }
+                if(cmd.hasOption("f") && cmd.getOptionValue("f").equals("ON")){
+                    code = code.concat(" FLOW=").concat(cmd.getOptionValue("f"));
+                    flow = true;
+                }
                 code = code.concat("\r");
                 DatagramSocket[] datagramSocket = new DatagramSocket[2];
-                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, args[3].equals("image"));
+                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow);
                 messageDispatcher.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
