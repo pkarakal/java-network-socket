@@ -91,6 +91,7 @@ class Networking {
                 String job = cmd.getOptionValue("j");
                 InetAddress ip = InetAddress.getByAddress(byteIP);
                 boolean flow = false;
+                int length = 128;
                 if (job.equals("thermo")) {
                     code = code.concat("T00");
                 }
@@ -105,9 +106,18 @@ class Networking {
                     code = code.concat(" FLOW=").concat(cmd.getOptionValue("f"));
                     flow = true;
                 }
+                if(cmd.hasOption("l")){
+                    int len = Integer.parseInt(cmd.getOptionValue("l"));
+                    if (len != 128 && len!=256 && len !=512 && len!= 1024){
+                        logger.warning("An invalid length was specified. Going with 128");
+                        len = 128;
+                    }
+                    length = len;
+                    code = code.concat(" UDP=").concat(String.valueOf(length));
+                }
                 code = code.concat("\r");
                 DatagramSocket[] datagramSocket = new DatagramSocket[2];
-                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow);
+                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
                 messageDispatcher.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
