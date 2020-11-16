@@ -90,12 +90,36 @@ class Networking {
                 String code = cmd.getOptionValue("r");
                 String job = cmd.getOptionValue("j");
                 InetAddress ip = InetAddress.getByAddress(byteIP);
+                boolean flow = false;
+                int length = 128;
                 if (job.equals("thermo")) {
                     code = code.concat("T00");
                 }
+                if(cmd.getOptionValue("j").equals("video") || cmd.getOptionValue("j").equals("image")) {
+                    if (cmd.hasOption("m")) {
+                        code = code.concat(" CAM=").concat(cmd.getOptionValue("m"));
+                    }
+                    if (cmd.hasOption("m") && cmd.getOptionValue("m").equals("PTZ")
+                                && cmd.hasOption("d")) {
+                        code = code.concat(" DIR=").concat(cmd.getOptionValue("d"));
+                    }
+                    if (cmd.hasOption("f") && cmd.getOptionValue("f").equals("ON")) {
+                        code = code.concat(" FLOW=").concat(cmd.getOptionValue("f"));
+                        flow = true;
+                    }
+                    if (cmd.hasOption("l")) {
+                        int len = Integer.parseInt(cmd.getOptionValue("l"));
+                        if (len != 128 && len != 256 && len != 512 && len != 1024) {
+                            logger.warning("An invalid length was specified. Going with 128");
+                            len = 128;
+                        }
+                        length = len;
+                        code = code.concat(" UDP=").concat(String.valueOf(length));
+                    }
+                }
                 code = code.concat("\r");
                 DatagramSocket[] datagramSocket = new DatagramSocket[2];
-                MessageDispatcher messageDispatcher = new MessageDispatcher(code, "", datagramSocket, ip, port, receivePort, logger);
+                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
                 messageDispatcher.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
