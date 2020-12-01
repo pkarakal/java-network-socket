@@ -62,7 +62,9 @@ class Networking {
         options.addOption("d", "DIR", true, "Define the direction of the camera. Accepted values are U,D,L,R,C,M");
         options.addOption("f", "FLOW", true, "Define if flow is on or off");
         options.addOption("l", "UDP", true, "Define the length of the UDP packets. Accepted values are 128,256,512,1024. Default=1024");
-        options.addOption("t", "telemetryOnly", true, "Defines if ithakicopter class should only receive telemtry information");
+        options.addOption("o", "obdOpCode", true, "Input the operation code for the OBD. Accepted vales are: \n" +
+                                                          "1 -> Engine runtime\n 2 -> Intake air temperature\n 3 -> Throttle position\n" +
+                                                          "4 -> Engine RPM\n 5 -> Vehicle speed\n 6 -> Coolant temperature");
     }
     public static void main(String[] args) throws Exception {
         Logger logger = Logger.getLogger("Networking");
@@ -102,7 +104,7 @@ class Networking {
                 if (job.equals("thermo")) {
                     code = code.concat("T00");
                 }
-                if(cmd.getOptionValue("j").equals("video") || cmd.getOptionValue("j").equals("image")) {
+                if (cmd.getOptionValue("j").equals("video") || cmd.getOptionValue("j").equals("image")) {
                     if (cmd.hasOption("m")) {
                         code = code.concat(" CAM=").concat(cmd.getOptionValue("m"));
                     }
@@ -144,7 +146,11 @@ class Networking {
                 }
 //                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
 //                messageDispatcher.sendRequest();
-                Ithakicopter receiver = new Ithakicopter(ip, port, receiveIP, receivePort, code, socket, false,  logger);
+                int obdCode = 0;
+                if(cmd.hasOption('o')) {
+                    obdCode = Integer.parseInt(cmd.getOptionValue('o'));
+                }
+                OBDStatistics receiver = new OBDStatistics(ip, port, receivePort, code, socket, false, logger, obdCode);
                 receiver.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
