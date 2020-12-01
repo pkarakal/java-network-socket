@@ -28,12 +28,14 @@ package org.pkarakal.networking;
 import org.apache.commons.cli.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.*;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.stream.Stream;
 
 /**
  * *Networking*
@@ -55,10 +57,12 @@ class Networking {
         options.addRequiredOption("c", "clientPort",  true, "Define the port the server replies to");
         options.addRequiredOption("r","request-code", true, "Define the request code");
         options.addRequiredOption("j","job", true, "Define the job to execute. The valid parameters are echo, thermo, image, video, audio, tcp, ithaki, obd");
+        options.addOption("p", "publicIP", true, "Input your public IP. This is necessary for tcp, ithaki and obd");
         options.addOption("m", "CAM", true, "Define one of two cameras: FIX or PTZ");
         options.addOption("d", "DIR", true, "Define the direction of the camera. Accepted values are U,D,L,R,C,M");
         options.addOption("f", "FLOW", true, "Define if flow is on or off");
         options.addOption("l", "UDP", true, "Define the length of the UDP packets. Accepted values are 128,256,512,1024. Default=1024");
+        options.addOption("t", "telemetryOnly", true, "Defines if ithakicopter class should only receive telemtry information");
     }
     public static void main(String[] args) throws Exception {
         Logger logger = Logger.getLogger("Networking");
@@ -79,7 +83,9 @@ class Networking {
             try {
                 final CommandLine cmd = parser.parse(options, args);
                 String[] ipStr = (cmd.getOptionValue("i")).split("\\.");
+                String[] publicIPStr = null;
                 byte[] byteIP = new byte[4];
+                byte[] publicIP = null;
                 int i = 0;
                 for (String part : ipStr) {
                     byteIP[i] = (byte) Integer.parseInt(part);
@@ -90,6 +96,7 @@ class Networking {
                 String code = cmd.getOptionValue("r");
                 String job = cmd.getOptionValue("j");
                 InetAddress ip = InetAddress.getByAddress(byteIP);
+                InetAddress receiveIP = null;
                 boolean flow = false;
                 int length = 128;
                 if (job.equals("thermo")) {
@@ -117,10 +124,28 @@ class Networking {
                         code = code.concat(" UDP=").concat(String.valueOf(length));
                     }
                 }
+                if((cmd.getOptionValue("j").equals("tcp") || cmd.getOptionValue("j").equals("ithaki") || cmd.getOptionValue("j").equals("obd")) && cmd.hasOption("p")){
+                    publicIPStr = cmd.getOptionValue("p").split("\\.");
+                    i= 0;
+                    publicIP = new byte[4];
+                    for (String str: publicIPStr){
+                        publicIP[i] = (byte) Integer.parseInt(str);
+                        ++i;
+                    }
+                    receiveIP = InetAddress.getByAddress(publicIP);
+                }
                 code = code.concat("\r");
-                DatagramSocket[] datagramSocket = new DatagramSocket[2];
-                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
-                messageDispatcher.sendRequest();
+//                DatagramSocket[] datagramSocket = new DatagramSocket[2];
+                Socket socket = null;
+                if(receiveIP != null){
+                    socket = new Socket(ip, port, receiveIP, receivePort);
+                } else {
+                    socket= new Socket(ip, port);
+                }
+//                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
+//                messageDispatcher.sendRequest();
+                Ithakicopter receiver = new Ithakicopter(ip, port, receiveIP, receivePort, code, socket, false,  logger);
+                receiver.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
                 System.out.println(e.toString());
