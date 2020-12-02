@@ -30,7 +30,7 @@ import java.net.*;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
-public class MessageDispatcher {
+public class MessageDispatcher implements Request{
     InetAddress serverIP;
     int serverPort;
     int clientPort;
