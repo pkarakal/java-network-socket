@@ -145,24 +145,57 @@ class Networking {
                 }
                 code = code.concat("\r");
                 DatagramSocket[] datagramSocket = new DatagramSocket[2];
-//                Socket socket = null;
-//                if(receiveIP != null){
-//                    socket = new Socket(ip, port, receiveIP, receivePort);
-//                } else {
-//                    socket= new Socket(ip, port);
-//                }
-//                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
-//                messageDispatcher.sendRequest();
-//                int obdCode = 0;
-//                if(cmd.hasOption('o')) {
-//                    obdCode = Integer.parseInt(cmd.getOptionValue('o'));
-//                }
+                Socket socket = null;
+                int obdCode = 0;
+                if(cmd.hasOption('o')) {
+                    obdCode = Integer.parseInt(cmd.getOptionValue('o'));
+                }
                 String audioCode = "AD";
                 if(cmd.hasOption('a')){
                     audioCode = cmd.getOptionValue('a');
                 }
-                assert soundCode != null;
-                AudioStreaming receiver = new AudioStreaming(code, audioCode, datagramSocket, ip, port, receivePort, logger,  length, soundCode);
+                Request receiver = null;
+                switch (job){
+                    case "echo":
+                    case "thermo":
+                        receiver = new MessageDispatcher(code, "", datagramSocket, ip, port, receivePort, logger);
+                        break;
+                    case "image":
+                    case "video":
+                        receiver = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
+                        break;
+                    case "audio":
+                        assert soundCode!= null;
+                        receiver = new AudioStreaming(code, audioCode, datagramSocket, ip, port, receivePort, logger,  length, soundCode);
+                        break;
+                    case "tcp":
+                        if(receiveIP != null){
+                            socket = new Socket(ip, port, receiveIP, receivePort);
+                        } else {
+                            socket= new Socket(ip, port);
+                        }
+                        receiver = new TCPReceiver(ip, port, receivePort, code, socket, false,  logger);
+                        break;
+                    case "ithaki":
+                        if(receiveIP != null){
+                            socket = new Socket(ip, port, receiveIP, receivePort);
+                        } else {
+                            socket= new Socket(ip, port);
+                        }
+                        receiver = new Ithakicopter(ip, port, receiveIP, receivePort, code, socket, false,  logger);
+                        break;
+                    case "obd":
+                        if(receiveIP != null){
+                            socket = new Socket(ip, port, receiveIP, receivePort);
+                        } else {
+                            socket= new Socket(ip, port);
+                        }
+                        receiver = new OBDStatistics(ip, port, receivePort, code, socket, false, logger, obdCode);
+                        break;
+                    default:
+                        break;
+                }
+                assert receiver != null;
                 receiver.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
