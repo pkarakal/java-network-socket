@@ -25,6 +25,10 @@
 
 package org.pkarakal.networking;
 
+import com.opencsv.CSVWriter;
+
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.*;
 import java.util.Arrays;
@@ -42,10 +46,12 @@ public class MessageDispatcher implements Request{
     byte[] txBuffer;
     byte[] rxBuffer;
     Logger logger;
+    File echo;
+    boolean isThermo = false;
     
     public MessageDispatcher(String code, String message, DatagramSocket[] sockets,
                              InetAddress serverIP, int serverPort,
-                             int clientPort, Logger logger) throws SocketException {
+                             int clientPort, Logger logger, boolean isThermo) throws SocketException {
         this.code = code;
         this.message = message;
         this.datagramSockets = sockets;
@@ -55,6 +61,7 @@ public class MessageDispatcher implements Request{
         this.logger = logger;
         this.rxBuffer = new byte[2048];
         this.txBuffer = this.code.getBytes();
+        this.isThermo = isThermo;
         try {
             this.initDatagrams();
         } catch (SocketException e){
@@ -107,17 +114,44 @@ public class MessageDispatcher implements Request{
     }
     
     public void sendRequest() throws SocketException {
-        for (int i=0; i<10 && !this.waitingForResult; ++i) {
+        long totalMs = (long)(4 * 60000);
+        long echoStartTime = System.currentTimeMillis();
+        long totalElapsedMs = 0;
+        int packetCount = 0;
+        echo = new File(isThermo ? "thermo.csv": "echo.csv");
+        FileWriter outputfile = null;
+        try {
+            outputfile = new FileWriter(echo);
+        // create CSVWriter object filewriter object as parameter
+        CSVWriter writer = new CSVWriter(outputfile);
+        String[] headers = new String[4];
+        headers[0] = "Packet"; headers[1]= "CurrentTime"; headers[2] = "Value"; headers[3]= "Duration";
+        writer.writeNext(headers);
+        while ((totalElapsedMs = System.currentTimeMillis() - echoStartTime) < totalMs){
             try {
                 this.datagramSockets[0].send(this.datagramPackets[0]);
+                long startTime = System.currentTimeMillis();
                 this.waitingForResult = true;
                 this.datagramSockets[1].setSoTimeout(9000000);
                 this.datagramSockets[1].receive(this.datagramPackets[1]);
+                long endTime = System.currentTimeMillis();
+                long responseTime = endTime - startTime;
+                String[] values = new String[4];
+                values[0]= String.valueOf(packetCount);
+                values[1]= String.valueOf(endTime);
+                values[2]= new String(rxBuffer, 0, this.datagramPackets[1].getLength());
+                values[3]= String.valueOf(responseTime);
+                writer.writeNext(values);
+                ++packetCount;
                 logger.info(new String(rxBuffer, 0, this.datagramPackets[1].getLength()));
                 this.waitingForResult = false;
             } catch (IOException e) {
                 logger.severe(Arrays.toString(e.getStackTrace()));
             }
+        }
+        writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         int i =0;
         for(DatagramSocket socket = this.datagramSockets[i]; i< this.datagramPackets.length; ++i) {

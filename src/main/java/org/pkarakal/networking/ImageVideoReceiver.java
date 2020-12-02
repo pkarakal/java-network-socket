@@ -46,7 +46,7 @@ public class ImageVideoReceiver extends MessageDispatcher {
     public ImageVideoReceiver(String code, String message, DatagramSocket[] sockets,
                               InetAddress serverIP, int serverPort, int clientPort,
                               Logger logger, boolean isImage, boolean flow, int rxBufferLength) throws SocketException {
-        super(code, message, sockets, serverIP, serverPort, clientPort, logger);
+        super(code, message, sockets, serverIP, serverPort, clientPort, logger, false);
         this.rxBuffer = new byte[rxBufferLength];
         this.datagramPackets[1] = new DatagramPacket(this.rxBuffer, this.rxBuffer.length);
         this.isImage = isImage;
