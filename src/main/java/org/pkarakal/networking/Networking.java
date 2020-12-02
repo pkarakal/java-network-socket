@@ -158,7 +158,7 @@ class Networking {
                 switch (job){
                     case "echo":
                     case "thermo":
-                        receiver = new MessageDispatcher(code, "", datagramSocket, ip, port, receivePort, logger);
+                        receiver = new MessageDispatcher(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("thermo") );
                         break;
                     case "image":
                     case "video":

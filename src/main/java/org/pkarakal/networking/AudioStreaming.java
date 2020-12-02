@@ -47,7 +47,7 @@ public class AudioStreaming extends MessageDispatcher {
     
     public AudioStreaming(String code, String message, DatagramSocket[] sockets, InetAddress serverIP,
                           int serverPort, int clientPort, Logger logger, int rxBufferLength, String audioPackets) throws SocketException {
-        super(code, message, sockets, serverIP, serverPort, clientPort, logger);
+        super(code, message, sockets, serverIP, serverPort, clientPort, logger, false);
         this.rxBuffer = new byte[rxBufferLength];
         this.audioPackets = Integer.parseInt(audioPackets.substring(1));
         this.soundSource = audioPackets.substring(0,1);
