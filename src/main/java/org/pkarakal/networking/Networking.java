@@ -65,6 +65,9 @@ class Networking {
         options.addOption("o", "obdOpCode", true, "Input the operation code for the OBD. Accepted vales are: \n" +
                                                           "1 -> Engine runtime\n 2 -> Intake air temperature\n 3 -> Throttle position\n" +
                                                           "4 -> Engine RPM\n 5 -> Vehicle speed\n 6 -> Coolant temperature");
+        options.addOption("a", "audioDPCM", true, "Define if the audio uses Adaptive, Non-Adaptive or Adaptive Quantiser DPCM.\n " +
+                                                          "Accepted values are AD -> Adaptive  and AQ -> Adaptive-Quantiser. Defaults to AD");
+        options.addOption("t", "soundCode", true, "Define the audio code to send. This controls the source and number of packets of the sound");
     }
     public static void main(String[] args) throws Exception {
         Logger logger = Logger.getLogger("Networking");
@@ -136,21 +139,30 @@ class Networking {
                     }
                     receiveIP = InetAddress.getByAddress(publicIP);
                 }
-                code = code.concat("\r");
-//                DatagramSocket[] datagramSocket = new DatagramSocket[2];
-                Socket socket = null;
-                if(receiveIP != null){
-                    socket = new Socket(ip, port, receiveIP, receivePort);
-                } else {
-                    socket= new Socket(ip, port);
+                String soundCode = null;
+                if(cmd.hasOption('t')){
+                    soundCode = cmd.getOptionValue('t');
                 }
+                code = code.concat("\r");
+                DatagramSocket[] datagramSocket = new DatagramSocket[2];
+//                Socket socket = null;
+//                if(receiveIP != null){
+//                    socket = new Socket(ip, port, receiveIP, receivePort);
+//                } else {
+//                    socket= new Socket(ip, port);
+//                }
 //                ImageVideoReceiver messageDispatcher = new ImageVideoReceiver(code, "", datagramSocket, ip, port, receivePort, logger, job.equals("image"), flow, length);
 //                messageDispatcher.sendRequest();
-                int obdCode = 0;
-                if(cmd.hasOption('o')) {
-                    obdCode = Integer.parseInt(cmd.getOptionValue('o'));
+//                int obdCode = 0;
+//                if(cmd.hasOption('o')) {
+//                    obdCode = Integer.parseInt(cmd.getOptionValue('o'));
+//                }
+                String audioCode = "AD";
+                if(cmd.hasOption('a')){
+                    audioCode = cmd.getOptionValue('a');
                 }
-                OBDStatistics receiver = new OBDStatistics(ip, port, receivePort, code, socket, false, logger, obdCode);
+                assert soundCode != null;
+                AudioStreaming receiver = new AudioStreaming(code, audioCode, datagramSocket, ip, port, receivePort, logger,  length, soundCode);
                 receiver.sendRequest();
             } catch (UnknownHostException | SocketException e) {
                 logger.severe(e.toString());
