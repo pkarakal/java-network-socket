@@ -1,7 +1,7 @@
 # Network Socket Programming in Java
 This is a project developed for the Networking II class of ECE department in AUTH. 
 
-##Prerequisites
+## Prerequisites
 1.  OpenJDK 11 or higher (it may work with an earlier version as well)
 2.  Maven
 
